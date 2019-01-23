@@ -76,7 +76,7 @@
 - Evaluate with `evaluatoin_ws.py` as before.
 
 #### Load pre-trained SQLova parameters.
-- Pretrained SQLova model parameters are saved in uploaded data. To start from this, uncomment line 562-565.
+- Pretrained SQLova model parameters are uploaded in [release](https://github.com/naver/sqlova/releases). To start from this, uncomment line 562-565 and set paths.
 
   
 #### Code base 
