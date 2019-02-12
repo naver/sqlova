@@ -523,6 +523,129 @@ def gen_l_hpu(i_hds):
 
     return l_hpu
 
+def get_bert_output_s2s(model_bert, tokenizer, nlu_t, hds, sql_vocab, max_seq_length):
+    """
+    s2s version. Treat SQL-tokens as pseudo-headers
+    sql_vocab = ("sql select", "sql where", "sql and", "sql equal", "sql greater than", "sql less than")
+
+    e.g.)
+    Q: What is the name of the player with score greater than 15?
+    H: Name of the player, score
+    Input: [CLS], what, is, ...,
+    [SEP], name, of, the, player, [SEP], score,
+    [SEP] sql, select, [SEP], sql, where, [SEP], sql, and, [SEP], ...
+
+    Here, input is tokenized further by WordPiece (WP) tokenizer and fed into BERT.
+
+    INPUT
+    :param model_bert:
+    :param tokenizer: WordPiece toknizer
+    :param nlu: Question
+    :param nlu_t: CoreNLP tokenized nlu.
+    :param hds: Headers
+    :param hs_t: None or 1st-level tokenized headers
+    :param max_seq_length: max input token length
+
+    OUTPUT
+    tokens: BERT input tokens
+    nlu_tt: WP-tokenized input natural language questions
+    orig_to_tok_index: map the index of 1st-level-token to the index of 2nd-level-token
+    tok_to_orig_index: inverse map.
+
+    """
+
+
+    l_n = []
+    l_hs = []  # The length of columns for each batch
+    l_input = []
+    input_ids = []
+    tokens = []
+    segment_ids = []
+    input_mask = []
+
+    i_nlu = []  # index to retreive the position of contextual vector later.
+    i_hds = []
+    i_sql_vocab = []
+
+    doc_tokens = []
+    nlu_tt = []
+
+    t_to_tt_idx = []
+    tt_to_t_idx = []
+    for b, nlu_t1 in enumerate(nlu_t):
+
+        hds1 = hds[b]
+        l_hs.append(len(hds1))
+
+
+        # 1. 2nd tokenization using WordPiece
+        tt_to_t_idx1 = []  # number indicates where sub-token belongs to in 1st-level-tokens (here, CoreNLP).
+        t_to_tt_idx1 = []  # orig_to_tok_idx[i] = start index of i-th-1st-level-token in all_tokens.
+        nlu_tt1 = []  # all_doc_tokens[ orig_to_tok_idx[i] ] returns first sub-token segement of i-th-1st-level-token
+        for (i, token) in enumerate(nlu_t1):
+            t_to_tt_idx1.append(
+                len(nlu_tt1))  # all_doc_tokens[ indicate the start position of original 'white-space' tokens.
+            sub_tokens = tokenizer.tokenize(token)
+            for sub_token in sub_tokens:
+                tt_to_t_idx1.append(i)
+                nlu_tt1.append(sub_token)  # all_doc_tokens are further tokenized using WordPiece tokenizer
+        nlu_tt.append(nlu_tt1)
+        tt_to_t_idx.append(tt_to_t_idx1)
+        t_to_tt_idx.append(t_to_tt_idx1)
+
+        l_n.append(len(nlu_tt1))
+        #         hds1_all_tok = tokenize_hds1(tokenizer, hds1)
+
+
+
+        # [CLS] nlu [SEP] col1 [SEP] col2 [SEP] ...col-n [SEP]
+        # 2. Generate BERT inputs & indices.
+        # Combine hds1 and sql_vocab
+        tokens1, segment_ids1, i_sql_vocab1, i_nlu1, i_hds1 = generate_inputs_s2s(tokenizer, nlu_tt1, hds1, sql_vocab)
+
+        # i_hds1
+        input_ids1 = tokenizer.convert_tokens_to_ids(tokens1)
+
+        # Input masks
+        # The mask has 1 for real tokens and 0 for padding tokens. Only real
+        # tokens are attended to.
+        input_mask1 = [1] * len(input_ids1)
+
+        # 3. Zero-pad up to the sequence length.
+        l_input.append( len(input_ids1) )
+        while len(input_ids1) < max_seq_length:
+            input_ids1.append(0)
+            input_mask1.append(0)
+            segment_ids1.append(0)
+
+        assert len(input_ids1) == max_seq_length
+        assert len(input_mask1) == max_seq_length
+        assert len(segment_ids1) == max_seq_length
+
+        input_ids.append(input_ids1)
+        tokens.append(tokens1)
+        segment_ids.append(segment_ids1)
+        input_mask.append(input_mask1)
+
+        i_nlu.append(i_nlu1)
+        i_hds.append(i_hds1)
+        i_sql_vocab.append(i_sql_vocab1)
+
+    # Convert to tensor
+    all_input_ids = torch.tensor(input_ids, dtype=torch.long).to(device)
+    all_input_mask = torch.tensor(input_mask, dtype=torch.long).to(device)
+    all_segment_ids = torch.tensor(segment_ids, dtype=torch.long).to(device)
+
+    # 4. Generate BERT output.
+    all_encoder_layer, pooled_output = model_bert(all_input_ids, all_segment_ids, all_input_mask)
+
+    # 5. generate l_hpu from i_hds
+    l_hpu = gen_l_hpu(i_hds)
+
+    return all_encoder_layer, pooled_output, tokens, i_nlu, i_hds, i_sql_vocab, \
+           l_n, l_hpu, l_hs, l_input, \
+           nlu_tt, t_to_tt_idx, tt_to_t_idx
+
 
 def get_bert_output(model_bert, tokenizer, nlu_t, hds, max_seq_length):
     """
@@ -1737,4 +1860,478 @@ def generate_sql_q1(sql_i1, tb1):
     # sql_plus_query = sql_plus_query_part1 + sql_plus_query_part2
 
     return sql_query
+
+
+def get_pnt_idx1(col_pool_type, st_ed):
+    st, ed = st_ed
+    if col_pool_type == 'start_tok':
+        pnt_idx1 = st
+    elif col_pool_type == 'end_tok':
+        pnt_idx1 = ed
+    elif col_pool_type == 'avg':
+        pnt_idx1 = arange(st, ed, 1)
+    return pnt_idx1
+
+
+def gen_g_pnt_idx(g_wvi, sql_i, i_hds, i_sql_vocab, col_pool_type):
+    """
+    sql_vocab = (
+        0.. "sql none", "sql max", "sql min", "sql count", "sql sum", "sql average", ..5
+        6.. "sql select", "sql where", "sql and", .. 8
+        9.. "sql equal", "sql greater than", "sql less than", .. 11
+        12.. "sql start", "sql end" .. 13
+    )
+    """
+    g_pnt_idxs = []
+
+
+
+    for b, sql_i1 in enumerate(sql_i):
+        i_sql_vocab1 = i_sql_vocab[b]
+        i_hds1 = i_hds[b]
+        g_pnt_idxs1 = []
+
+        # start token
+        pnt_idx1 = get_pnt_idx1(col_pool_type, i_sql_vocab1[-2])
+        g_pnt_idxs1.append(pnt_idx1)
+
+        # select token
+        pnt_idx1 = get_pnt_idx1(col_pool_type, i_sql_vocab1[6])
+        g_pnt_idxs1.append(pnt_idx1)
+
+        # select agg
+        idx_agg = sql_i1["agg"]
+        pnt_idx1 = get_pnt_idx1(col_pool_type, i_sql_vocab1[idx_agg])
+        g_pnt_idxs1.append(pnt_idx1)
+
+        # select column
+        idx_sc = sql_i1["sel"]
+        pnt_idx1 = get_pnt_idx1(col_pool_type, i_hds1[idx_sc])
+        g_pnt_idxs1.append(pnt_idx1)
+
+        conds = sql_i1["conds"]
+        wn = len(conds)
+        if wn <= 0:
+            pass
+        else:
+            # select where
+            pnt_idx1 = get_pnt_idx1(col_pool_type, i_sql_vocab1[7])
+            g_pnt_idxs1.append(pnt_idx1)
+
+            for i_wn, conds1 in enumerate(conds):
+                # where column
+                idx_wc = conds1[0]
+                pnt_idx1 = get_pnt_idx1(col_pool_type, i_hds1[idx_wc])
+                g_pnt_idxs1.append(pnt_idx1)
+
+                # where op
+                idx_wo = conds1[1]
+                pnt_idx1 = get_pnt_idx1(col_pool_type, i_sql_vocab1[idx_wo + 9])
+                g_pnt_idxs1.append(pnt_idx1)
+
+                # where val
+                st, ed = g_wvi[b][i_wn]
+                end_pos_of_sql_vocab = i_sql_vocab1[-1][-1]
+                g_pnt_idxs1.append(st + 1 + end_pos_of_sql_vocab)  # due to inital [CLS] token in BERT-input vector
+                g_pnt_idxs1.append(ed + 1 + end_pos_of_sql_vocab)  # due to inital [CLS] token in BERT-input vector
+
+                # and token
+                if i_wn < wn - 1:
+                    pnt_idx1 = get_pnt_idx1(col_pool_type, i_sql_vocab1[8])
+                    g_pnt_idxs1.append(pnt_idx1)
+
+        # end token
+        pnt_idx1 = get_pnt_idx1(col_pool_type, i_sql_vocab1[-1])
+        g_pnt_idxs1.append(pnt_idx1)
+
+        g_pnt_idxs.append(g_pnt_idxs1)
+
+    return g_pnt_idxs
+
+
+def pred_pnt_idxs(score, pnt_start_tok, pnt_end_tok):
+    pr_pnt_idxs = []
+    for b, score1 in enumerate(score):
+        # score1 = [T, max_seq_length]
+        pr_pnt_idxs1 = [pnt_start_tok]
+        for t, score11 in enumerate(score1):
+            pnt = score11.argmax().item()
+            pr_pnt_idxs1.append(pnt)
+
+            if pnt == pnt_end_tok:
+                break
+        pr_pnt_idxs.append(pr_pnt_idxs1)
+
+    return pr_pnt_idxs
+
+
+def generate_sql_q_s2s(pnt_idxs, tokens, tb):
+    sql_q = []
+    for b, pnt_idxs1 in enumerate(pnt_idxs):
+        tb1 = tb[b]
+        sql_q1 = generate_sql_q1_s2s(pnt_idxs1, tokens[b], tb1)
+        sql_q.append(sql_q1)
+
+    return sql_q
+
+
+def generate_sql_q1_s2s(pnt_idxs1, tokens1, tb1):
+    """
+        agg_ops = ['', 'max', 'min', 'count', 'sum', 'avg']
+        cond_ops = ['=', '>', '<', 'OP']
+
+        Temporal as it can show only one-time conditioned case.
+        sql_query: real sql_query
+        sql_plus_query: More redable sql_query
+
+        "PLUS" indicates, it deals with the some of db specific facts like PCODE <-> NAME
+    """
+    sql_query = ""
+    for t, pnt_idxs11 in enumerate(pnt_idxs1):
+        tok = tokens1[pnt_idxs11]
+        sql_query += tok
+        if t < len(pnt_idxs1)-1:
+            sql_query += " "
+
+
+    return sql_query
+
+
+# Generate sql_i from pnt_idxs
+def find_where_pnt_belong(pnt, vg):
+    idx_sub = -1
+    for i, st_ed in enumerate(vg):
+        st, ed = st_ed
+        if pnt < ed and pnt >= st:
+            idx_sub = i
+
+    return idx_sub
+
+
+def gen_pnt_i_from_pnt(pnt, i_sql_vocab1, i_nlu1, i_hds1):
+    # Find where it belong
+    vg_list = [i_sql_vocab1, [i_nlu1], i_hds1] # as i_nlu has only single st and ed
+    i_vg = -1
+    i_vg_sub = -1
+    for i, vg in enumerate(vg_list):
+        idx_sub = find_where_pnt_belong(pnt, vg)
+        if idx_sub > -1:
+            i_vg = i
+            i_vg_sub = idx_sub
+            break
+    return i_vg, i_vg_sub
+
+
+def gen_i_vg_from_pnt_idxs(pnt_idxs, i_sql_vocab, i_nlu, i_hds):
+    i_vg_list = []
+    i_vg_sub_list = []
+    for b, pnt_idxs1 in enumerate(pnt_idxs):
+        # if properly generated,
+        sql_q1_list = []
+        i_vg_list1 = [] # index of (sql_vocab, nlu, hds)
+        i_vg_sub_list1 = [] # index inside of each vocab group
+
+        for t, pnt in enumerate(pnt_idxs1):
+            i_vg, i_vg_sub = gen_pnt_i_from_pnt(pnt, i_sql_vocab[b], i_nlu[b], i_hds[b])
+            i_vg_list1.append(i_vg)
+            i_vg_sub_list1.append(i_vg_sub)
+
+        # sql_q1 = sql_q1.join(' ')
+        # sql_q.append(sql_q1)
+        i_vg_list.append(i_vg_list1)
+        i_vg_sub_list.append(i_vg_sub_list1)
+    return i_vg_list, i_vg_sub_list
+
+
+def gen_sql_q_from_i_vg(tokens, nlu, nlu_t, hds, tt_to_t_idx, pnt_start_tok, pnt_end_tok, pnt_idxs, i_vg_list, i_vg_sub_list):
+    """
+    (
+        "none", "max", "min", "count", "sum", "average",
+        "select", "where", "and",
+        "equal", "greater than", "less than",
+        "start", "end"
+    ),
+    """
+    sql_q = []
+    sql_i = []
+    for b, nlu_t1 in enumerate(nlu_t):
+        sql_q1_list = []
+        sql_i1 = {}
+        tt_to_t_idx1 = tt_to_t_idx[b]
+        nlu_st_observed = False
+        agg_observed = False
+        wc_obs = False
+        wo_obs = False
+        conds = []
+
+        for t, i_vg in enumerate(i_vg_list[b]):
+            i_vg_sub = i_vg_sub_list[b][t]
+            pnt = pnt_idxs[b][t]
+            if i_vg == 0:
+                # sql_vocab
+                if pnt == pnt_start_tok or pnt == pnt_end_tok:
+                    pass
+                else:
+                    tok = tokens[b][pnt]
+                    if tok in ["none", "max", "min", "count", "sum", "average"]:
+                        agg_observed = True
+                        if tok == "none":
+                            pass
+                        sql_i1["agg"] = ["none", "max", "min", "count", "sum", "average"].index(tok)
+                    else:
+                        if tok in ["greater", "less", "equal"]:
+                            if tok == 'greater':
+                                tok = '>'
+                            elif tok == 'less':
+                                tok = '<'
+                            elif tok == 'equal':
+                                tok = '='
+
+                            # gen conds1
+                            if wc_obs:
+                                conds1.append( ['=','>','<'].index(tok) )
+                                wo_obs = True
+
+                        sql_q1_list.append(tok)
+
+            elif i_vg == 1:
+                # nlu case
+                if not nlu_st_observed:
+                    idx_nlu_st = pnt
+                    nlu_st_observed = True
+                else:
+                    # now to wrap up
+                    idx_nlu_ed = pnt
+                    st_wh_idx = tt_to_t_idx1[idx_nlu_st - pnt_end_tok - 2]
+                    ed_wh_idx = tt_to_t_idx1[idx_nlu_ed - pnt_end_tok - 2]
+                    pr_wv_str11 = nlu_t1[st_wh_idx:ed_wh_idx + 1]
+                    merged_wv11 = merge_wv_t1_eng(pr_wv_str11, nlu[b])
+                    sql_q1_list.append(merged_wv11)
+                    nlu_st_observed = False
+
+                    if wc_obs and wo_obs:
+                        conds1.append(merged_wv11)
+                        conds.append(conds1)
+
+                        wc_obs = False
+                        wo_obs = False
+
+
+            elif i_vg == 2:
+                # headers
+                tok = hds[b][i_vg_sub]
+                if agg_observed:
+                    sql_q1_list.append(f"({tok})")
+                    sql_i1["sel"] = i_vg_sub
+                    agg_observed = False
+                else:
+                    wc_obs = True
+                    conds1 = [i_vg_sub]
+
+                    sql_q1_list.append(tok)
+
+        # insert table name between.
+        sql_i1["conds"] = conds
+        sql_i.append(sql_i1)
+        sql_q1 = ' '.join(sql_q1_list)
+        sql_q.append(sql_q1)
+
+    return sql_q, sql_i
+
+
+def get_cnt_lx_list_s2s(g_pnt_idxs, pr_pnt_idxs):
+    # all cnt are list here.
+    cnt_list = []
+    for b, g_pnt_idxs1 in enumerate(g_pnt_idxs):
+        pr_pnt_idxs1 = pr_pnt_idxs[b]
+
+        if g_pnt_idxs1 == pr_pnt_idxs1:
+            cnt_list.append(1)
+        else:
+            cnt_list.append(0)
+
+    return cnt_list
+
+
+def get_wemb_h_FT_Scalar_1(i_hds, l_hs, hS, all_encoder_layer, col_pool_type='start_tok'):
+    """
+    As if
+    [ [table-1-col-1-tok1, t1-c1-t2, ...],
+       [t1-c2-t1, t1-c2-t2, ...].
+       ...
+       [t2-c1-t1, ...,]
+    ]
+
+    # i_hds = [ [  Batch 1 ] [  Batch 2  ] ]
+    #  [Batch 1] = [ (col1_st_idx, col1_ed_idx), (col2_st_idx, col2_ed_idx), ...]
+    # i_hds = [[(11, 14), (15, 19), (20, 21), (22, 24), (25, 27), (28, 29)],
+            #  [(16, 19), (20, 24), (25, 26), (27, 29), (30, 32), (33, 34)]]
+
+    pool_type = 'start_tok', 'end_tok', 'avg'
+
+    """
+    bS = len(l_hs)
+    l_hs_max = max(l_hs)
+    wemb_h = torch.zeros([bS, l_hs_max, hS]).to(device)
+    for b, i_hds1 in enumerate(i_hds):
+        for i_hd, st_ed_pair in enumerate(i_hds1):
+            st, ed = st_ed_pair
+            if col_pool_type == 'start_tok':
+                vec = all_encoder_layer[-1][b, st,:]
+            elif col_pool_type == 'end_tok':
+                vec = all_encoder_layer[-1][b, ed, :]
+            elif col_pool_type == 'avg':
+                vecs = all_encoder_layer[-1][b, st:ed,:]
+                vec = vecs.mean(dim=1, keepdim=True)
+            else:
+                raise ValueError
+            wemb_h[b, i_hd, :] = vec
+
+    return wemb_h
+
+
+def cal_prob(s_sc, s_sa, s_wn, s_wc, s_wo, s_wv, pr_sc, pr_sa, pr_wn, pr_wc, pr_wo, pr_wvi):
+    """
+
+    :param s_sc: [B, l_h]
+    :param s_sa: [B, l_a] # 16
+    :param s_wn: [B, 5]
+    :param s_wc: [B, l_h]
+    :param s_wo: [B, 4, l_o] #
+    :param s_wv: [B, 4, 22]
+    :return:
+    """
+    # First get selected index
+
+    #
+
+    # Predict prob
+    p_sc = cal_prob_sc(s_sc, pr_sc)
+    p_sa = cal_prob_sa(s_sa, pr_sa)
+    p_wn = cal_prob_wn(s_wn, pr_wn)
+    p_wc = cal_prob_wc(s_wc, pr_wc)
+    p_wo = cal_prob_wo(s_wo, pr_wo)
+    p_wvi = cal_prob_wvi_se(s_wv, pr_wvi)
+
+    # calculate select-clause probability
+    p_select = cal_prob_select(p_sc, p_sa)
+
+    # calculate where-clause probability
+    p_where  = cal_prob_where(p_wn, p_wc, p_wo, p_wvi)
+
+    # calculate total probability
+    p_tot = cal_prob_tot(p_select, p_where)
+
+    return p_tot, p_select, p_where, p_sc, p_sa, p_wn, p_wc, p_wo, p_wvi
+
+def cal_prob_tot(p_select, p_where):
+    p_tot = []
+    for b, p_select1 in enumerate(p_select):
+        p_where1 = p_where[b]
+        p_tot.append( p_select1 * p_where1 )
+
+    return p_tot
+
+def cal_prob_select(p_sc, p_sa):
+    p_select = []
+    for b, p_sc1 in enumerate(p_sc):
+        p1 = 1.0
+        p1 *= p_sc1
+        p1 *= p_sa[b]
+
+        p_select.append(p1)
+    return p_select
+
+def cal_prob_where(p_wn, p_wc, p_wo, p_wvi):
+    p_where = []
+    for b, p_wn1 in enumerate(p_wn):
+        p1 = 1.0
+        p1 *= p_wn1
+        p_wc1 = p_wc[b]
+
+        for i_wn, p_wc11 in enumerate(p_wc1):
+            p_wo11 = p_wo[b][i_wn]
+            p_wv11_st, p_wv11_ed = p_wvi[b][i_wn]
+
+            p1 *= p_wc11
+            p1 *= p_wo11
+            p1 *= p_wv11_st
+            p1 *= p_wv11_ed
+
+        p_where.append(p1)
+
+    return p_where
+
+
+def cal_prob_sc(s_sc, pr_sc):
+    ps = F.softmax(s_sc, dim=1)
+    p = []
+    for b, ps1 in enumerate(ps):
+        pr_sc1 = pr_sc[b]
+        p1 = ps1[pr_sc1]
+        p.append(p1.item())
+
+    return p
+
+def cal_prob_sa(s_sa, pr_sa):
+    ps = F.softmax(s_sa, dim=1)
+    p = []
+    for b, ps1 in enumerate(ps):
+        pr_sa1 = pr_sa[b]
+        p1 = ps1[pr_sa1]
+        p.append(p1.item())
+
+    return p
+
+def cal_prob_wn(s_wn, pr_wn):
+    ps = F.softmax(s_wn, dim=1)
+    p = []
+    for b, ps1 in enumerate(ps):
+        pr_wn1 = pr_wn[b]
+        p1 = ps1[pr_wn1]
+        p.append(p1.item())
+
+    return p
+
+def cal_prob_wc(s_wc, pr_wc):
+    ps = torch.sigmoid(s_wc)
+    ps_out = []
+    for b, pr_wc1 in enumerate(pr_wc):
+        ps1 = array(ps[b])
+        ps_out1 = ps1[pr_wc1]
+        ps_out.append(list(ps_out1))
+
+    return ps_out
+
+def cal_prob_wo(s_wo, pr_wo):
+    # assume there is always at least single condition.
+    ps = F.softmax(s_wo, dim=2)
+    ps_out = []
+
+
+    for b, pr_wo1 in enumerate(pr_wo):
+        ps_out1 = []
+        for n, pr_wo11 in enumerate(pr_wo1):
+            ps11 = ps[b][n]
+            ps_out1.append( ps11[pr_wo11].item() )
+
+
+        ps_out.append(ps_out1)
+
+    return ps_out
+
+
+def cal_prob_wvi_se(s_wv, pr_wvi):
+    prob_wv = F.softmax(s_wv, dim=-2).detach().to('cpu').numpy()
+    p_wv = []
+    for b, pr_wvi1 in enumerate(pr_wvi):
+        p_wv1 = []
+        for i_wn, pr_wvi11 in enumerate(pr_wvi1):
+            st, ed = pr_wvi11
+            p_st = prob_wv[b, i_wn, st, 0]
+            p_ed = prob_wv[b, i_wn, ed, 1]
+            p_wv1.append([p_st, p_ed])
+        p_wv.append(p_wv1)
+
+    return p_wv
 
