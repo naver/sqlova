@@ -1,7 +1,6 @@
 # Wonseok Hwang
 # Sep30, 2018
 import os, sys, argparse, re, json
-import nsml
 
 from matplotlib.pylab import *
 import torch.nn as nn
@@ -22,9 +21,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def construct_hyper_param(parser):
     parser.add_argument('--tepoch', default=200, type=int)
-    parser.add_argument("--bS", default=32, type=int,
+    parser.add_argument("--bS", default=16, type=int,
                         help="Batch size")
-    parser.add_argument("--accumulate_gradients", default=1, type=int,
+    parser.add_argument("--accumulate_gradients", default=2, type=int,
                         help="The number of accumulation of backpropagation to effectivly increase the batch size.")
     parser.add_argument('--fine_tune',
                         default=True,
@@ -50,7 +49,7 @@ def construct_hyper_param(parser):
     parser.add_argument("--num_target_layers",
                         default=1, type=int,
                         help="The Number of final layers of BERT to be used in downstream task.")
-    parser.add_argument('--lr_bert', default=1e-5, type=float, help='BERT model learning rate.')
+    parser.add_argument('--lr_bert', default=6e-6, type=float, help='BERT model learning rate.')
     parser.add_argument('--seed',
                         type=int,
                         default=42,
@@ -105,8 +104,8 @@ def construct_hyper_param(parser):
         args.do_lower_case = True
 
     # args.toy_model = not torch.cuda.is_available()
-    args.toy_model = False
-    args.toy_size = 12
+    args.toy_model = not True
+    args.toy_size = 32
     if args.model_type == 'FT_Scalar_1':
         assert args.num_target_layers == 1
         assert args.fine_tune == True

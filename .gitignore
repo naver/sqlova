@@ -1,2 +1,4 @@
-**/*.pyc
+/sqlova/**/*.pyc
+/wikisql/**/*.pyc
 .idea
+*.swp

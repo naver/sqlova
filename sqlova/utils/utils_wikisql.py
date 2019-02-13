@@ -24,11 +24,9 @@ from .wikisql_formatter import get_squad_style_ans
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load data -----------------------------------------------------------------------------------------------
-
-
-def load_wikisql(path_wikisql, toy_model, toy_size, bert=False, no_w2i=False, no_hs_tok=False):
+def load_wikisql(path_wikisql, toy_model, toy_size, bert=False, no_w2i=False, no_hs_tok=False, aug=False):
     # Get data
-    train_data, train_table = load_wikisql_data(path_wikisql, mode='train', toy_model=toy_model, toy_size=toy_size, no_hs_tok=no_hs_tok)
+    train_data, train_table = load_wikisql_data(path_wikisql, mode='train', toy_model=toy_model, toy_size=toy_size, no_hs_tok=no_hs_tok, aug=aug)
     dev_data, dev_table = load_wikisql_data(path_wikisql, mode='dev', toy_model=toy_model, toy_size=toy_size, no_hs_tok=no_hs_tok)
 
 
@@ -42,9 +40,13 @@ def load_wikisql(path_wikisql, toy_model, toy_size, bert=False, no_w2i=False, no
     return train_data, train_table, dev_data, dev_table, w2i, wemb
 
 
-def load_wikisql_data(path_wikisql, mode='train', toy_model=False, toy_size=10, no_hs_tok=False):
+def load_wikisql_data(path_wikisql, mode='train', toy_model=False, toy_size=10, no_hs_tok=False, aug=False):
     """ Load training sets
     """
+    if aug:
+        mode = f"aug.{mode}"
+        print('Augmented data is loaded!')
+
     path_sql = os.path.join(path_wikisql, mode+'_tok.jsonl')
     if no_hs_tok:
         path_table = os.path.join(path_wikisql, mode + '.tables.jsonl')
@@ -70,6 +72,7 @@ def load_wikisql_data(path_wikisql, mode='train', toy_model=False, toy_size=10, 
             table[t1['id']] = t1
 
     return data, table
+
 
 def load_w2i_wemb(path_wikisql, bert=False):
     """ Load pre-made subset of TAPI.
@@ -2297,7 +2300,7 @@ def cal_prob_wc(s_wc, pr_wc):
     ps = torch.sigmoid(s_wc)
     ps_out = []
     for b, pr_wc1 in enumerate(pr_wc):
-        ps1 = array(ps[b])
+        ps1 = array(ps[b].cpu())
         ps_out1 = ps1[pr_wc1]
         ps_out.append(list(ps_out1))
 
@@ -2335,3 +2338,69 @@ def cal_prob_wvi_se(s_wv, pr_wvi):
 
     return p_wv
 
+def generate_inputs_s2s(tokenizer, nlu1_tt, hds1, sql_vocab1):
+    """
+    [CLS] sql_vocab [SEP] question [SEP] headers
+    To make sql_vocab in a fixed position.
+    """
+
+    tokens = []
+    segment_ids = []
+
+    tokens.append("[CLS]")
+
+
+    # sql_vocab
+    i_sql_vocab = []
+    # for doc
+    for i, sql_vocab11 in enumerate(sql_vocab1):
+        i_st_sql = len(tokens)
+        sub_tok = tokenizer.tokenize(sql_vocab11)
+        tokens += sub_tok
+        i_ed_sql = len(tokens)
+        i_sql_vocab.append((i_st_sql, i_ed_sql))
+        segment_ids += [1] * len(sub_tok)
+        if i < len(sql_vocab1) - 1:
+            tokens.append("[SEP]")
+            segment_ids.append(0)
+        elif i == len(sql_vocab1) - 1:
+            tokens.append("[SEP]")
+            segment_ids.append(1)
+        else:
+            raise EnvironmentError
+
+
+    # question
+    i_st_nlu = len(tokens)  # to use it later
+
+    segment_ids.append(0)
+    for token in nlu1_tt:
+        tokens.append(token)
+        segment_ids.append(0)
+    i_ed_nlu = len(tokens)
+    tokens.append("[SEP]")
+    segment_ids.append(0)
+    i_nlu = (i_st_nlu, i_ed_nlu)
+
+
+    # headers
+    i_hds = []
+    # for doc
+    for i, hds11 in enumerate(hds1):
+        i_st_hd = len(tokens)
+        sub_tok = tokenizer.tokenize(hds11)
+        tokens += sub_tok
+        i_ed_hd = len(tokens)
+        i_hds.append((i_st_hd, i_ed_hd))
+        segment_ids += [1] * len(sub_tok)
+        if i < len(hds1)-1:
+            tokens.append("[SEP]")
+            segment_ids.append(0)
+        elif i == len(hds1)-1:
+            tokens.append("[SEP]")
+            segment_ids.append(1)
+        else:
+            raise EnvironmentError
+
+
+    return tokens, segment_ids, i_sql_vocab, i_nlu, i_hds
