@@ -1,6 +1,7 @@
 # Wonseok Hwang
 # Sep30, 2018
 import os, sys, argparse, re, json
+import random as python_random
 
 from matplotlib.pylab import *
 import torch.nn as nn
@@ -109,6 +110,15 @@ def construct_hyper_param(parser):
     if args.model_type == 'FT_Scalar_1':
         assert args.num_target_layers == 1
         assert args.fine_tune == True
+
+
+    # Seeds for random number generation.
+    python_random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available:
+        torch.cuda.manual_seed_all(args.seed)
+
     return args
 
 
