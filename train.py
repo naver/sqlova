@@ -285,7 +285,12 @@ def train(train_loader, train_table, model, model_bert, opt, bert_config, tokeni
         # Prediction
         pr_sc, pr_sa, pr_wn, pr_wc, pr_wo, pr_wvi = pred_sw_se(s_sc, s_sa, s_wn, s_wc, s_wo, s_wv, )
         pr_wv_str, pr_wv_str_wp = convert_pr_wvi_to_string(pr_wvi, nlu_t, nlu_tt, tt_to_t_idx, nlu)
-        pr_sql_i = generate_sql_i(pr_sc, pr_sa, pr_wn, pr_wc, pr_wo, pr_wv_str, nlu)
+
+        # Sort pr_wc:
+        #   Sort pr_wc when training the model as pr_wo and pr_wvi are predicted using ground-truth where-column (g_wc)
+        #   In case of 'dev' or 'test', it is not necessary as the ground-truth is not used during inference.
+        pr_wc_sorted = sort_pr_wc(pr_wc, g_wc)
+        pr_sql_i = generate_sql_i(pr_sc, pr_sa, pr_wn, pr_wc_sorted, pr_wo, pr_wv_str, nlu)
 
 
         # Cacluate accuracy

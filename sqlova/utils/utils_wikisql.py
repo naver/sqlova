@@ -5,6 +5,7 @@
 
 import os, json
 import random as rd
+from copy import deepcopy
 
 from matplotlib.pylab import *
 
@@ -2404,3 +2405,29 @@ def generate_inputs_s2s(tokenizer, nlu1_tt, hds1, sql_vocab1):
 
 
     return tokens, segment_ids, i_sql_vocab, i_nlu, i_hds
+
+
+def sort_pr_wc(pr_wc, g_wc):
+    """
+    Input: list
+    pr_wc = [B, n_conds]
+    g_wc = [B, n_conds]
+
+
+    Return: list
+    pr_wc_sorted = [B, n_conds]
+    """
+    pr_wc_sorted = []
+    for b, pr_wc1 in enumerate(pr_wc):
+        g_wc1 = g_wc[b]
+        pr_wc1_sorted = []
+
+        if set(g_wc1) == set(pr_wc1):
+            pr_wc1_sorted = deepcopy(g_wc1)
+        else:
+            # no sorting when g_wc1 and pr_wc1 are different.
+            pr_wc1_sorted = deepcopy(pr_wc1)
+
+        pr_wc_sorted.append(pr_wc1_sorted)
+    return pr_wc_sorted
+
