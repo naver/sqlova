@@ -144,6 +144,7 @@ def construct_hyper_param(parser):
         assert args.fine_tune == True
 
     # Seeds for random number generation.
+    seed(args.seed)
     python_random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)

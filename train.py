@@ -89,6 +89,7 @@ def construct_hyper_param(parser):
         args.do_lower_case = True
 
     # Seeds for random number generation
+    seed(args.seed)
     python_random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
