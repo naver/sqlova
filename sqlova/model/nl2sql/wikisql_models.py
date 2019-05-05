@@ -29,7 +29,6 @@ class Seq2SQL_v1(nn.Module):
         self.n_cond_ops = n_cond_ops
         self.n_agg_ops = n_agg_ops
 
-        self.wcp = WCP(iS, hS, lS, dr)
         self.scp = SCP(iS, hS, lS, dr)
         self.sap = SAP(iS, hS, lS, dr, n_agg_ops, old=old)
         self.wnp = WNP(iS, hS, lS, dr)
