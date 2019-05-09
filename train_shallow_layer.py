@@ -153,7 +153,7 @@ def get_opt(model, model_bert, model_type):
         opt_bert = torch.optim.Adam(list(filter(lambda p: p.requires_grad, model.parameters())) \
                                # + list(model_bert.parameters()),
                                + list(filter(lambda p: p.requires_grad, model_bert.parameters())),
-                               lr=args.lr, weight_decay=0)
+                               lr=args.lr_bert, weight_decay=0)
         opt = opt_bert # for consistency in interface
     else:
         raise NotImplementedError
