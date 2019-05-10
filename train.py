@@ -93,7 +93,7 @@ def construct_hyper_param(parser):
     python_random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    if torch.cuda.is_available:
+    if torch.cuda.is_available():
         torch.cuda.manual_seed_all(args.seed)
 
     #args.toy_model = not torch.cuda.is_available()
@@ -179,7 +179,7 @@ def get_models(args, BERT_PT_PATH, trained=False, path_model_bert=None, path_mod
         model_bert.load_state_dict(res['model_bert'])
         model_bert.to(device)
 
-        if torch.cuda_is_available():
+        if torch.cuda.is_available():
             res = torch.load(path_model)
         else:
             res = torch.load(path_model, map_location='cpu')
