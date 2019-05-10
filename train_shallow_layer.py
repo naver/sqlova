@@ -117,7 +117,7 @@ def construct_hyper_param(parser):
     python_random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    if torch.cuda.is_available:
+    if torch.cuda.is_available():
         torch.cuda.manual_seed_all(args.seed)
 
     return args
@@ -196,14 +196,14 @@ def get_models(args, BERT_PT_PATH, trained=False, path_model_bert=None, path_mod
         assert path_model_bert != None
         assert path_model != None
 
-        if nsml.IS_ON_NSML:
+        if torch.cuda.is_available():
             res = torch.load(path_model_bert)
         else:
             res = torch.load(path_model_bert, map_location='cpu')
         model_bert.load_state_dict(res['model_bert'])
         model_bert.to(device)
 
-        if nsml.IS_ON_NSML:
+        if torch.cuda.is_available():
             res = torch.load(path_model)
         else:
             res = torch.load(path_model, map_location='cpu')
@@ -219,48 +219,6 @@ def get_data(path_wikisql, args):
     train_loader, dev_loader = get_loader_wikisql(train_data, dev_data, args.bS, shuffle_train=True)
 
     return train_data, train_table, dev_data, dev_table, train_loader, dev_loader
-
-
-def gen_nsml_report(acc_train, aux_out_train, acc_dev, aux_out_dev):
-    ave_loss, acc_sc, acc_sa, \
-    acc_wn, acc_wc, acc_wo, acc_wvi, acc_wv, \
-    acc_lx, acc_x = acc_train
-
-    grad_abs_mean_mean, grad_abs_mean_sig, grad_abs_sig_mean = aux_out_train
-
-    ave_loss_t, acc_sc_t, acc_sa_t, \
-    acc_wn_t, acc_wc_t, acc_wo_t, acc_wvi_t, acc_wv_t, \
-    acc_lx_t, acc_x_t = acc_dev
-
-    nsml.report(
-        step=epoch,
-        epoch=epoch,
-        epochs_total=args.tepoch,
-        train__loss=ave_loss,
-        train__acc_sc=acc_sc,
-        train__acc_sa=acc_sa,
-        train__acc_wn=acc_wn,
-        train__acc_wc=acc_wc,
-        train__acc_wo=acc_wo,
-        train__acc_wvi=acc_wvi,
-        train__acc_wv=acc_wv,
-        train__acc_lx=acc_lx,
-        train__acc_x=acc_x,
-        train_grad_abs_mean_mean=float(grad_abs_mean_mean),  # error appeared when numpy.float32 is used
-        train_grad_abs_mean_sig=float(grad_abs_mean_sig),
-        train_grad_abs_sig_mean=float(grad_abs_sig_mean),
-        dev__loss=ave_loss_t,
-        dev__acc_sc_t=acc_sc_t,
-        dev__acc_sa_t=acc_sa_t,
-        dev__acc_wn_t=acc_wn_t,
-        dev__acc_wc_t=acc_wc_t,
-        dev__acc_wo_t=acc_wo_t,
-        dev__acc_wvi_t=acc_wvi_t,
-        dev__acc_wv_t=acc_wv_t,
-        dev__acc_lx_t=acc_lx_t,
-        dev__acc_x=acc_x_t,
-        scope=locals()
-    )
 
 
 def train(train_loader, train_table, model, model_bert, opt, bert_config, tokenizer,
