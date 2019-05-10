@@ -93,7 +93,7 @@ def construct_hyper_param(parser):
     python_random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    if torch.cuda.is_available:
+    if torch.cuda.is_available():
         torch.cuda.manual_seed_all(args.seed)
 
     #args.toy_model = not torch.cuda.is_available()
@@ -179,7 +179,7 @@ def get_models(args, BERT_PT_PATH, trained=False, path_model_bert=None, path_mod
         model_bert.load_state_dict(res['model_bert'])
         model_bert.to(device)
 
-        if torch.cuda_is_available():
+        if torch.cuda.is_available():
             res = torch.load(path_model)
         else:
             res = torch.load(path_model, map_location='cpu')
@@ -329,7 +329,7 @@ def train(train_loader, train_table, model, model_bert, opt, bert_config, tokeni
     acc_wn = cnt_wn / cnt
     acc_wc = cnt_wc / cnt
     acc_wo = cnt_wo / cnt
-    acc_wvi = cnt_wv / cnt
+    acc_wvi = cnt_wvi / cnt
     acc_wv = cnt_wv / cnt
     acc_lx = cnt_lx / cnt
     acc_x = cnt_x / cnt
@@ -640,5 +640,5 @@ if __name__ == '__main__':
 
             state = {'model_bert': model_bert.state_dict()}
             torch.save(state, os.path.join('.', 'model_bert_best.pt'))
- 
+
         print(f" Best Dev lx acc: {acc_lx_t_best} at epoch: {epoch_best}")
