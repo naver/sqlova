@@ -329,7 +329,7 @@ def train(train_loader, train_table, model, model_bert, opt, bert_config, tokeni
     acc_wn = cnt_wn / cnt
     acc_wc = cnt_wc / cnt
     acc_wo = cnt_wo / cnt
-    acc_wvi = cnt_wv / cnt
+    acc_wvi = cnt_wvi / cnt
     acc_wv = cnt_wv / cnt
     acc_lx = cnt_lx / cnt
     acc_x = cnt_x / cnt
@@ -640,5 +640,5 @@ if __name__ == '__main__':
 
             state = {'model_bert': model_bert.state_dict()}
             torch.save(state, os.path.join('.', 'model_bert_best.pt'))
- 
+
         print(f" Best Dev lx acc: {acc_lx_t_best} at epoch: {epoch_best}")
