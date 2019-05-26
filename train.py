@@ -127,8 +127,8 @@ def get_bert(BERT_PT_PATH, bert_type, do_lower_case, no_pretraining):
 
     return model_bert, tokenizer, bert_config
 
-def get_opt(model, model_bert, fine_tune):
-    if fine_tune:
+def get_opt(model, model_bert, args):
+    if args.fine_tune:
         opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
                                lr=args.lr, weight_decay=0)
 
@@ -582,7 +582,7 @@ if __name__ == '__main__':
     # model, model_bert, tokenizer, bert_config = get_models(args, BERT_PT_PATH, trained=True, path_model_bert=path_model_bert, path_model=path_model)
 
     ## 5. Get optimizers
-    opt, opt_bert = get_opt(model, model_bert, args.fine_tune)
+    opt, opt_bert = get_opt(model, model_bert, args)
 
     ## 6. Train
     acc_lx_t_best = -1
