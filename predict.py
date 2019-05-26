@@ -21,7 +21,7 @@
 #
 # Once you have all that, you are ready to predict, using:
 #   python predict.py \
-#     --bert_type_add uL \       # need to match the architecture of the model you are using
+#     --bert_type_abb uL \       # need to match the architecture of the model you are using
 #     --model_file <path to models>/model_best.pt            \
 #     --bert_model_file <path to models>/model_bert_best.pt  \
 #     --bert_path <path to bert_config/pytorch model/vocab>  \
