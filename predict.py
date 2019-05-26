@@ -8,7 +8,6 @@
 #
 # Make sure you also have the following support files (see README for where to get them):
 #    - bert_config_uncased_*.json
-#    - pytorch_model_*.bin
 #    - vocab_uncased_*.txt
 #
 # Finally, you need some data - some files called:
@@ -24,7 +23,7 @@
 #     --bert_type_abb uL \       # need to match the architecture of the model you are using
 #     --model_file <path to models>/model_best.pt            \
 #     --bert_model_file <path to models>/model_bert_best.pt  \
-#     --bert_path <path to bert_config/pytorch model/vocab>  \
+#     --bert_path <path to bert_config/vocab>  \
 #     --result_path <where to place results>                 \
 #     --data_path <path to db/jsonl/tables.jsonl>            \
 #     --split <split>
@@ -106,6 +105,7 @@ path_save_for_evaluation = args.result_path
 # Load pre-trained models
 path_model_bert = args.bert_model_file
 path_model = args.model_file
+args.no_pretraining = True  # counterintuitive, but avoids loading unused models
 model, model_bert, tokenizer, bert_config = get_models(args, BERT_PT_PATH, trained=True, path_model_bert=path_model_bert, path_model=path_model)
 opt, opt_bert = get_opt(model, model_bert, args)
 
