@@ -155,6 +155,7 @@ if __name__ == '__main__':
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument('--din', default='/Users/wonseok/data/WikiSQL-1.1/data', help='data directory')
     parser.add_argument('--dout', default='/Users/wonseok/data/wikisql_tok', help='output directory')
+    parser.add_argument('--split', default='train,dev,test', help='comma=separated list of splits to process')
     args = parser.parse_args()
 
     answer_toy = not True
@@ -164,7 +165,7 @@ if __name__ == '__main__':
         os.makedirs(args.dout)
 
     # for split in ['train', 'dev', 'test']:
-    for split in ['train', 'dev', 'test']:
+    for split in args.split.split(','):
         fsplit = os.path.join(args.din, split) + '.jsonl'
         ftable = os.path.join(args.din, split) + '.tables.jsonl'
         fout = os.path.join(args.dout, split) + '_tok.jsonl'
