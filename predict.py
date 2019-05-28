@@ -33,7 +33,7 @@
 import argparse, os
 from sqlnet.dbengine import DBEngine
 from sqlova.utils.utils_wikisql import *
-from train import construct_hyper_param, get_models, get_opt
+from train import construct_hyper_param, get_models
 
 # This is a stripped down version of the test() method in train.py - identical, except:
 #   - does not attempt to measure accuracy and indeed does not expect the data to be labelled.
@@ -107,7 +107,6 @@ path_model_bert = args.bert_model_file
 path_model = args.model_file
 args.no_pretraining = True  # counterintuitive, but avoids loading unused models
 model, model_bert, tokenizer, bert_config = get_models(args, BERT_PT_PATH, trained=True, path_model_bert=path_model_bert, path_model=path_model)
-opt, opt_bert = get_opt(model, model_bert, args)
 
 # Load data
 dev_data, dev_table = load_wikisql_data(args.data_path, mode=args.split, toy_model=args.toy_model, toy_size=args.toy_size, no_hs_tok=True)
