@@ -60,7 +60,7 @@
     - `model_best.pt`: the checkpoint of the the sequence-to-SQL module.
     - `model_bert_best.pt`: the checkpoint of the BERT module.
     - `results_dev.jsonl`: json file for official evaluation.
-- `Shallow-Layer` and `Decoder-Layer` models can be trained similarly (`train_shallow_layer.py`, `train_decoer_layer.py`). 
+- `Shallow-Layer` and `Decoder-Layer` models can be trained similarly (`train_shallow_layer.py`, `train_decoder_layer.py`). 
 
 #### Evaluation on WikiSQL DEV set
 - To calculate logical form and execution accuracies on `dev` set using official evaluation script,
