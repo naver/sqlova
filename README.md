@@ -90,15 +90,15 @@
 - Pre-trained BERT parameters can be downloaded from BERT [official repository](https://github.com/google-research/bert) and can be coverted to `pt`file using following script. You need install both pytorch and tensorflow and change `BERT_BASE_DIR` to your data directory.
 
 ```sh
-cd sqlova
-export BERT_BASE_DIR=data/uncased_L-12_H-768_A-12
-python bert/convert_tf_checkpoint_to_pytorch.py \
-    --tf_checkpoint_path $BERT_BASE_DIR/bert_model.ckpt \
-    --bert_config_file    $BERT_BASE_DIR/bert_config.json \
-    --pytorch_dump_path     $BERT_BASE_DIR/pytorch_model.bin 
+    cd sqlova
+    export BERT_BASE_DIR=data/uncased_L-12_H-768_A-12
+    python bert/convert_tf_checkpoint_to_pytorch.py \
+        --tf_checkpoint_path $BERT_BASE_DIR/bert_model.ckpt \
+        --bert_config_file    $BERT_BASE_DIR/bert_config.json \
+        --pytorch_dump_path     $BERT_BASE_DIR/pytorch_model.bin 
 ```
 
-`bert/convert_tf_checkpoint_to_pytorch.py` is inspired by [huggingface-pytorch-pretrained-BERT](https://github.com/huggingface/pytorch-pretrained-BERT), but `pytorch-pretrained-BERT` is not compatible with our bert model.
+- `bert/convert_tf_checkpoint_to_pytorch.py` is from the previous version of [huggingface-pytorch-pretrained-BERT](https://github.com/huggingface/pytorch-pretrained-BERT), and current version of `pytorch-pretrained-BERT` is not compatible with the bert model used in this repo due to the difference in variable names (in LayerNorm). See [this](https://github.com/naver/sqlova/issues/1) for the detail.
 - For the conveinience, the annotated WikiSQL data and the PyTorch-converted pre-trained BERT parameters are available at [here](https://drive.google.com/file/d/1iJvsf38f16el58H4NPINQ7uzal5-V4v4/view?usp=sharing).
 
 ### License
