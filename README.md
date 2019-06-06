@@ -99,7 +99,7 @@
 ```
 
 - `bert/convert_tf_checkpoint_to_pytorch.py` is from the previous version of [huggingface-pytorch-pretrained-BERT](https://github.com/huggingface/pytorch-pretrained-BERT), and current version of `pytorch-pretrained-BERT` is not compatible with the bert model used in this repo due to the difference in variable names (in LayerNorm). See [this](https://github.com/naver/sqlova/issues/1) for the detail.
-- For the conveinience, the annotated WikiSQL data and the PyTorch-converted pre-trained BERT parameters are available at [here](https://drive.google.com/file/d/1iJvsf38f16el58H4NPINQ7uzal5-V4v4/view?usp=sharing).
+- For the convenience, the annotated WikiSQL data and the PyTorch-converted pre-trained BERT parameters are available at [here](https://drive.google.com/file/d/1iJvsf38f16el58H4NPINQ7uzal5-V4v4/view?usp=sharing).
 
 ### License
 ```
