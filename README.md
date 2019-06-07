@@ -2,7 +2,7 @@
 - SQLova is a neural semantic parser translating natural language utterance to SQL query. The name is originated from the name of our department:  **S**earch & **QLova** ([Search & Clova](https://clova.ai/ko/research/publications.html)).
 
 ### Authors
-- [Wonseok Hwang](wonseok.hwang@navercorp.com), [Jinyeong Yim](jinyeong.yim@navercorp.com), [Seunghyun Park](seung.park@navercorp.com), and [Minjoon Seo](minjoon.seo@navercorp.com).
+- [Wonseok Hwang](mailto:wonseok.hwang@navercorp.com), [Jinyeong Yim](mailto:jinyeong.yim@navercorp.com), [Seunghyun Park](mailto:seung.park@navercorp.com), and [Minjoon Seo](https://seominjoon.github.io).
 - Affiliation: Clova AI Research, NAVER Corp., Seongnam, Korea.
 - [Technical report](https://ssl.pstatic.net/static/clova/service/clova_ai/research/publications/SQLova.pdf).
 
