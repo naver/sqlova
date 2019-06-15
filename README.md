@@ -37,7 +37,7 @@
 - Example
     - Install [minicoda](https://conda.io/miniconda.html)
     - `conda install pytorch torchvision -c pytorch`
-    - `conda install -c conda-forge records`
+    - `conda install -c conda-forge records==0.5.2`
     - `conda install babel` 
     - `conda install matplotlib`
     - `conda install defusedxml`
