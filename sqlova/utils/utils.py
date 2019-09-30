@@ -2,7 +2,8 @@
 # Apache License v2.0
 
 # Wonseok Hwang
-import os
+import os, json
+import random as python_random
 from matplotlib.pylab import *
 
 
@@ -65,3 +66,24 @@ def json_default_type_checker(o):
     """
     if isinstance(o, int64): return int(o)
     raise TypeError
+
+
+def load_jsonl(path_file, toy_data=False, toy_size=4, shuffle=False, seed=1):
+    data = []
+
+    with open(path_file, "r", encoding="utf-8") as f:
+        for idx, line in enumerate(f):
+            if toy_data and idx >= toy_size and (not shuffle):
+                break
+            t1 = json.loads(line.strip())
+            data.append(t1)
+
+    if shuffle and toy_data:
+        # When shuffle required, get all the data, shuffle, and get the part of data.
+        print(
+            f"If the toy-data is used, the whole data loaded first and then shuffled before get the first {toy_size} data")
+
+        python_random.Random(seed).shuffle(data)  # fixed
+        data = data[:toy_size]
+
+    return data
