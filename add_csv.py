@@ -39,7 +39,7 @@ def csv_to_sqlite(table_id, csv_file_name, sqlite_file_name, working_folder='.')
 
 def is_num(val):
     pattern = re.compile(r'[-+]?\d*\.\d+|\d+')
-    if pattern.search(val):
+    if pattern.match(val):
         return True
     else:
         return False
@@ -75,9 +75,6 @@ def get_refined_rows(rows, types):
     return rrs
 
 
-
-
-
 def csv_to_json(table_id, csv_file_name, json_file_name, working_folder='.'):
     csv_file_name = os.path.join(working_folder, csv_file_name)
     json_file_name = os.path.join(working_folder, json_file_name)
@@ -101,6 +98,7 @@ def csv_to_json(table_id, csv_file_name, json_file_name, working_folder='.'):
     with open(json_file_name, 'a+') as fout:
         json.dump(record, fout)
         fout.write('\n')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
