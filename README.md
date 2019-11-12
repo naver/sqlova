@@ -4,7 +4,11 @@
 ### Authors
 - [Wonseok Hwang](mailto:wonseok.hwang@navercorp.com), [Jinyeong Yim](mailto:jinyeong.yim@navercorp.com), [Seunghyun Park](mailto:seung.park@navercorp.com), and [Minjoon Seo](https://seominjoon.github.io).
 - Affiliation: Clova AI Research, NAVER Corp., Seongnam, Korea.
-- [Technical report](https://ssl.pstatic.net/static/clova/service/clova_ai/research/publications/SQLova.pdf).
+- The updated version of manuscript is available from [arXiv](https://arxiv.org/abs/1902.01069).
+    - The manuscript is significantly re-written to improve readability.
+    - The detailed description of the model and human evaluation process have added.
+    - To be presented at [KR2ML Workshop at NeurIPS 2019](https://kr2ml.github.io/2019/#about). 
+    - [The old version](https://ssl.pstatic.net/static/clova/service/clova_ai/research/publications/SQLova.pdf).
 
 ### Abstract
 - We present the new state-of-the-art semantic parsing model that translates a natural language (NL) utterance into a SQL query.
