@@ -90,8 +90,8 @@
 - The sequence-to-SQL model is started from the source code of [SQLNet](https://github.com/xiaojunxu/SQLNet) and significantly re-written while maintaining the basic column-attention and sequence-to-set structure of the SQLNet.
 
 #### Data
-- The data is annotated by using `annotate_ws.py` which is based on [`annotate.py`](https://github.com/salesforce/WikiSQL) from WikiSQL repository. The tokens of natural language guery, and the start and end indices of where-conditions on natural language tokens are annotated.
-- Pre-trained BERT parameters can be downloaded from BERT [official repository](https://github.com/google-research/bert) and can be coverted to `pt`file using following script. You need install both pytorch and tensorflow and change `BERT_BASE_DIR` to your data directory.
+- The data is annotated by using `annotate_ws.py` which is based on [`annotate.py`](https://github.com/salesforce/WikiSQL) from WikiSQL repository. The tokens of natural language query, and the start and end indices of where-conditions on natural language tokens are annotated.
+- Pre-trained BERT parameters can be downloaded from BERT [official repository](https://github.com/google-research/bert) and can be converted to `pt`file using following script. You need to install both pytorch and tensorflow and change `BERT_BASE_DIR` to your data directory.
 
 ```sh
     cd sqlova
